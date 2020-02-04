@@ -55,11 +55,13 @@ export default class Game extends React.Component {
       xIsNext: true
     };
   }
-
+  //Run AI's move on initial mount.
   componentDidMount() {
     console.log("Mounted!")
     this.runAI([{squares: Array(9).fill(null)}], true, this.state.ai)
   }
+
+  //Handles a players move.
   handleClick(i) {
     const history = this.state.history.slice(0, this.state.stepNumber + 1);
     const current = history[history.length - 1];
@@ -81,9 +83,9 @@ export default class Game extends React.Component {
       xIsNext: !xIsNext
     });
     this.runAI(history, !xIsNext, this.state.ai)
-
   }
 
+//This runs the AI's next move.  Only runs if it's the AI's turn and no one has won.
   runAI(history, xIsNext, ai) {
     let squares = history[history.length - 1].squares.slice()
     if(calculateWinner(squares) === null && ai === (xIsNext ? "X" : "O")) {
@@ -108,6 +110,7 @@ export default class Game extends React.Component {
       xIsNext: (step % 2) === 0
     });
   }
+
   resetGame(ai) {
       this.setState({
         ai: ai,
@@ -122,6 +125,7 @@ export default class Game extends React.Component {
       }
 
   }
+  //Renders game state
   render() {
     const history = this.state.history;
     const current = history[this.state.stepNumber];
@@ -163,6 +167,8 @@ export default class Game extends React.Component {
     );
   }
 }
+
+//Flips Xs to Os and vice versa
 function flipPlayer(player) {
   if (player === "X") {
     return "O"
@@ -172,14 +178,17 @@ function flipPlayer(player) {
   }
   return Error
 }
+
+//This runs alpha beta pruning on the game state tree, and returns the best
+//move.  Solves for optimizer winning.
 function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer) {
     let nextPlayer = flipPlayer(player)
     let winner = calculateWinner(node)
     if (depth === 0 || winner != null) {
-      if( winner === optimizer) {
+      if (winner === optimizer) {
         return [1, null]
       }
-      if( winner === flipPlayer(optimizer)) {
+      if (winner === flipPlayer(optimizer)) {
         return  [-1, null]
       }
       else {
@@ -222,7 +231,7 @@ function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer
           if (output[0] === value) {
             best_move = children[i].move
           }
-          if(alpha > beta_new) {
+          if (alpha > beta_new) {
             break;
           }
         }
@@ -230,10 +239,11 @@ function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer
     }
 }
 
+//Returns all possible next game board states if nextPlayer moves
 function findChildren(squares, nextPlayer) {
   let children = []
   for (let i = 0; i < squares.length; i++) {
-    if(squares[i] === null) {
+    if (squares[i] === null) {
       let new_child = squares.slice();
       new_child[i] = nextPlayer
       children.push({move: i, squares: new_child})
@@ -242,6 +252,7 @@ function findChildren(squares, nextPlayer) {
   return children
 }
 
+//Modfied to include case of ties.
 function calculateWinner(squares) {
   const lines = [
     [0, 1, 2],
