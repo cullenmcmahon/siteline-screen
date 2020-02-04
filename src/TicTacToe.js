@@ -50,11 +50,16 @@ export default class Game extends React.Component {
           squares: Array(9).fill(null)
         }
       ],
+      ai: "X",
       stepNumber: 0,
       xIsNext: true
     };
   }
 
+  componentDidMount() {
+    console.log("Mounted!")
+    this.runAI([{squares: Array(9).fill(null)}], true, this.state.ai)
+  }
   handleClick(i) {
     const history = this.state.history.slice(0, this.state.stepNumber + 1);
     const current = history[history.length - 1];
@@ -63,18 +68,38 @@ export default class Game extends React.Component {
     if (calculateWinner(squares) || squares[i]) {
       return;
     }
+    let xIsNext = this.state.xIsNext
     squares[i] = this.state.xIsNext ? "X" : "O";
-
-
+    history.push(
+      {
+        squares: squares
+      }
+    )
     this.setState({
-      history: history.concat([
-        {
-          squares: squares
-        }
-      ]),
-      stepNumber: history.length,
-      xIsNext: !this.state.xIsNext
+      history: history,
+      stepNumber: history.length - 1,
+      xIsNext: !xIsNext
     });
+    this.runAI(history, !xIsNext, this.state.ai)
+
+  }
+
+  runAI(history, xIsNext, ai) {
+    let squares = history[history.length - 1].squares.slice()
+    if(calculateWinner(squares) === null && ai === (xIsNext ? "X" : "O")) {
+      let best_move = alphabeta(squares, 9, -1, 1, true, ai, ai)
+      squares[best_move[1]] = ai
+      this.setState({
+        history: history.concat([
+          {
+            squares: squares
+          }
+        ]),
+        stepNumber: history.length,
+        xIsNext: !xIsNext
+      });
+    }
+
   }
 
   jumpTo(step) {
@@ -83,16 +108,25 @@ export default class Game extends React.Component {
       xIsNext: (step % 2) === 0
     });
   }
+  resetGame(ai) {
+      this.setState({
+        ai: ai,
+      })
+      this.setState({
+        history: [{squares: Array(9).fill(null)}],
+        stepNumber: 0,
+        xIsNext: true
+      })
+      if (ai === "X") {
+        this.runAI([{squares: Array(9).fill(null)}], true, ai)
+      }
 
+  }
   render() {
-
     const history = this.state.history;
     const current = history[this.state.stepNumber];
     const winner = calculateWinner(current.squares);
-    if(winner === null && this.state.xIsNext) {
-      let best_move = alphabeta(current.squares, 9, -1, 1, true, this.state.xIsNext ? "O" : "X", this.state.xIsNext ? "O" : "X")
-      this.handleClick(best_move[1])
-    }
+
     const moves = history.map((step, move) => {
       const desc = move ?
         'Go to move #' + move :
@@ -120,6 +154,8 @@ export default class Game extends React.Component {
           />
         </div>
         <div className="game-info">
+          <button onClick={() => this.resetGame("O")}>{'Play as X'}</button>
+          <button onClick={() => this.resetGame("X")}>{'Play as O'}</button>
           <div>{status}</div>
           <ol>{moves}</ol>
         </div>
@@ -127,21 +163,23 @@ export default class Game extends React.Component {
     );
   }
 }
-
+function flipPlayer(player) {
+  if (player === "X") {
+    return "O"
+  }
+  if (player === "O") {
+    return "X"
+  }
+  return Error
+}
 function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer) {
-    let nextPlayer = null
-    if (player === "X") {
-      nextPlayer = "O"
-    }
-    else {
-      nextPlayer = "X"
-    }
+    let nextPlayer = flipPlayer(player)
     let winner = calculateWinner(node)
     if (depth === 0 || winner != null) {
-      if( winner ===  "X") {
+      if( winner === optimizer) {
         return [1, null]
       }
-      if( winner === "O") {
+      if( winner === flipPlayer(optimizer)) {
         return  [-1, null]
       }
       else {
@@ -152,7 +190,7 @@ function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer
     if (maximizingPlayer) {
         let value = -1
         let alpha_new = alpha
-        let children = findChildren(node, nextPlayer)
+        let children = findChildren(node, player)
         let best_move = null
 
         for (let i = 0; i < children.length; i++) {
@@ -164,7 +202,7 @@ function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer
           if (output[0] === value) {
             best_move = children[i].move
           }
-          if (alpha_new >= beta) {
+          if(alpha_new > beta) {
             break;
           }
         }
@@ -174,7 +212,7 @@ function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer
     else {
         let value = 1
         let beta_new = beta
-        let children = findChildren(node, nextPlayer)
+        let children = findChildren(node, player)
         let best_move = null
         for (let i = 0; i < children.length; i++) {
           let child = children[i].squares.slice()
@@ -184,7 +222,7 @@ function alphabeta(node, depth, alpha, beta, maximizingPlayer, player, optimizer
           if (output[0] === value) {
             best_move = children[i].move
           }
-          if (alpha >= beta_new) {
+          if(alpha > beta_new) {
             break;
           }
         }
@@ -203,6 +241,7 @@ function findChildren(squares, nextPlayer) {
   }
   return children
 }
+
 function calculateWinner(squares) {
   const lines = [
     [0, 1, 2],
